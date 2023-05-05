@@ -2,11 +2,11 @@
 #include<debounce.h>
 #include "stdint.h"
 
-const int back_pin = A4;
-const int play_pin = A3;
-const int forward_pin = A2;
-const int arrow_left_pin = A1;
 const int arrow_right_pin = A0;
+const int arrow_left_pin = A1;
+const int forward_pin = A2;
+const int play_pin = A3;
+const int back_pin = A4;
 
 // Report ID
 enum
