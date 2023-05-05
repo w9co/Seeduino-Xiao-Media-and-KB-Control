@@ -1,0 +1,95 @@
+#include "Adafruit_TinyUSB.h"
+#include<debounce.h>
+#include "stdint.h"
+
+const int back_pin = A4;
+const int play_pin = A3;
+const int forward_pin = A2;
+const int arrow_left_pin = A1;
+const int arrow_right_pin = A0;
+
+// Report ID
+enum
+{
+  RID_KEYBOARD = 1,
+  RID_MOUSE,
+  RID_CONSUMER_CONTROL, // Media, volume etc ..
+};
+
+// HID report descriptor using TinyUSB's template
+uint8_t const desc_hid_report[] =
+{
+  TUD_HID_REPORT_DESC_KEYBOARD( HID_REPORT_ID(RID_KEYBOARD) ),
+  TUD_HID_REPORT_DESC_MOUSE   ( HID_REPORT_ID(RID_MOUSE) ),
+  TUD_HID_REPORT_DESC_CONSUMER( HID_REPORT_ID(RID_CONSUMER_CONTROL) )
+};
+
+// USB HID object. For ESP32 these values cannot be changed after this declaration
+// desc report, desc len, protocol, interval, use out endpoint
+
+Adafruit_USBD_HID usb_hid;
+
+void setup()
+{
+  usb_hid.setPollInterval(10);
+  usb_hid.setReportDescriptor(desc_hid_report, sizeof(desc_hid_report));
+  usb_hid.setStringDescriptor("CG Media Keys");
+
+  usb_hid.begin();
+
+  pinMode(back_pin, INPUT_PULLUP);
+  pinMode(play_pin, INPUT_PULLUP);
+  pinMode(forward_pin, INPUT_PULLUP);
+  pinMode(arrow_left_pin, INPUT_PULLUP);
+  pinMode(arrow_right_pin, INPUT_PULLUP);
+
+  //Serial.begin(115200);
+
+  while( !USBDevice.mounted() ) delay(1);
+}
+
+static void buttonHandler(uint8_t btnId, uint8_t btnState) {
+  if (usb_hid.ready()) {
+    if (btnState == BTN_PRESSED) {
+      if (btnId == 0) {
+        usb_hid.sendReport16(RID_CONSUMER_CONTROL, HID_USAGE_CONSUMER_SCAN_PREVIOUS);  
+      }
+      else if (btnId == 1) {
+        usb_hid.sendReport16(RID_CONSUMER_CONTROL, HID_USAGE_CONSUMER_PLAY_PAUSE);  
+      }
+      else if (btnId == 2) {
+        usb_hid.sendReport16(RID_CONSUMER_CONTROL, HID_USAGE_CONSUMER_SCAN_NEXT);  
+      }
+      else if (btnId == 3) {
+        uint8_t keycode[6] = { 0 };
+        keycode[0] = HID_KEY_ARROW_LEFT;
+        usb_hid.keyboardReport(RID_KEYBOARD, 0, keycode);
+      }
+      else if (btnId == 4) {
+        uint8_t keycode[6] = { 0 };
+        keycode[0] = HID_KEY_ARROW_RIGHT;
+        usb_hid.keyboardReport(RID_KEYBOARD, 0, keycode);
+      }
+    } else {
+      usb_hid.keyboardRelease(RID_KEYBOARD);
+      delay(10);
+      usb_hid.sendReport16(RID_CONSUMER_CONTROL, 0);
+    } 
+  }
+}
+
+static Button backButton(0, buttonHandler);
+static Button playButton(1, buttonHandler);
+static Button forwardButton(2, buttonHandler);
+static Button leftButton(3, buttonHandler);
+static Button rightButton(4, buttonHandler);
+
+void loop()
+{
+  delay(10);
+  backButton.update(digitalRead(back_pin));
+  playButton.update(digitalRead(play_pin));
+  forwardButton.update(digitalRead(forward_pin));
+  leftButton.update(digitalRead(arrow_left_pin));
+  rightButton.update(digitalRead(arrow_right_pin));
+}
